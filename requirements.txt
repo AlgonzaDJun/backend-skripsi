@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+scikit-learn
+numpy
+nltk
+matplotlib
+pandas
+spacy
+googletrans
+deep_translator
+plotly==5.20.0
