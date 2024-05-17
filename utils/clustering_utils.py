@@ -156,7 +156,6 @@ def perform_clustering(sentences):
 
 def perform_clustering_dev(laporans, jumlah_cluster):
     stop_words = set(stopwords.words("indonesian"))
-
     sentences = [laporan["deskripsi"] for laporan in laporans]
 
     tokenize_words = [word_tokenize(cleaning(word)) for word in sentences]
@@ -170,18 +169,23 @@ def perform_clustering_dev(laporans, jumlah_cluster):
 
     # print(clean_words)
 
-    # Preprocessing dan tokenisasi
     tfidf_vectorizer = TfidfVectorizer()
     tfidf_matrix = tfidf_vectorizer.fit_transform(clean_words)
     tfidf_df = pd.DataFrame(tfidf_matrix.toarray())
 
-    # print(clean_words)
-    # print(tfidf_df)
+    # feature_names = tfidf_vectorizer.get_feature_names_out()
+    # Mengonversi TF-IDF matrix ke DataFrame
+    # tfidf_df = pd.DataFrame(tfidf_matrix.toarray(), columns=feature_names)
 
     # Melakukan clustering dengan K-Means
     num_clusters = jumlah_cluster  # Ganti dengan jumlah cluster yang diinginkan
     kmeans = KMeans(n_clusters=num_clusters)
     kmeans.fit(tfidf_matrix)
+
+    # for i, label in enumerate(kmeans.labels_):
+    #     print(f"Cluster {label + 1}: {clean_words[i]}")
+
+    # return "ok"
 
     # Menyusun kalimat ke dalam cluster
     clusters = {}
@@ -198,6 +202,7 @@ def perform_clustering_dev(laporans, jumlah_cluster):
                 "fakultas": laporans[i]["fakultas"],
                 "jurusan": laporans[i]["jurusan"],
                 "gambar": laporans[i]["gambar"],
+                "status": laporans[i]["status"],
             }
         )
 
@@ -220,18 +225,6 @@ def perform_clustering_dev(laporans, jumlah_cluster):
     # Mengurutkan cluster berdasarkan jumlah anggota
     sorted_clusters = sorted(cluster_sizes.items(), key=lambda x: x[1], reverse=True)
 
-    # result = []
-    # for cluster_id, sentences_in_cluster in clusters.items():
-    #     most_common_words = identify_most_common_words(
-    #         [sentence["sentence"] for sentence in sentences_in_cluster]
-    #     )
-    #     result.append(
-    #         {
-    #             "cluster_id": str(cluster_id + 1),
-    #             "sentences": sentences_in_cluster,
-    #             "most_common_words": most_common_words,
-    #         }
-    #     )
     result = []
     for cluster_id, _ in sorted_clusters:
         sentences_in_cluster = clusters[cluster_id]
@@ -382,12 +375,6 @@ def ekstraksi_ner(sentences):
         }
     )
 
-    # # Urutkan entitas berdasarkan skornya
-    # sorted_entities = sorted(output, key=lambda x: x["score"], reverse=True)
-
-    # # Ambil lima entitas dengan skor tertinggi
-    # top_5_entities = sorted_entities[:5]
-
     unique_words = set()  # Set untuk menyimpan kata-kata unik
     result = []  # List untuk menyimpan hasil tanpa duplikat
 
@@ -398,6 +385,13 @@ def ekstraksi_ner(sentences):
             result.append(item)
 
     return result
+
+
+# # Urutkan entitas berdasarkan skornya
+# sorted_entities = sorted(output, key=lambda x: x["score"], reverse=True)
+
+# # Ambil lima entitas dengan skor tertinggi
+# top_5_entities = sorted_entities[:5]
 
 
 def ekstraksi_ner_trans(sentences):

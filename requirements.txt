@@ -9,3 +9,6 @@ spacy
 googletrans
 deep_translator
 plotly==5.20.0
+pusher
+cloudinary
+pymongo

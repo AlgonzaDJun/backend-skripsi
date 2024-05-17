@@ -15,7 +15,7 @@ from utils.clustering_utils import (
     find_optimal_num_clusters_silhouette_chart,
 )
 
-from utils.summarize import summarize_text_online
+from utils.summarize import summarize_text_online, summarize_text_offline
 
 router = APIRouter()
 
@@ -100,7 +100,7 @@ import json
 @router.get("/cluster")
 async def cluster_laporan(jumlah_cluster: int = 5):
     try:
-        laporans = laporan_collection.find({})
+        laporans = laporan_collection.find({"status": {"$nin": ["selesai", "ditolak"]}})
         laporans = list(laporans)
 
         # # Mengambil data laporan yang memiliki gambar
@@ -110,6 +110,79 @@ async def cluster_laporan(jumlah_cluster: int = 5):
         # image_urls = [lap["gambar"] for lap in laporans_with_image]
 
         # # Melakukan clustering
+        # data = [
+        #     {
+        #         "_id": 1,
+        #         "judul": "Kursi food court sering patah",
+        #         "deskripsi": "Kursi di food court danau unesa sering patah.",
+        #         "fakultas": "-",
+        #         "jurusan": "-",
+        #         "lokasi": "Food Court Danau Unesa Ketintang",
+        #         "gambar": "-",
+        #         "status": "-",
+        #     },
+        #     {
+        #         "_id": 2,
+        #         "judul": "kursi di food court",
+        #         "deskripsi": "Kursi di food court danau unesa sudah sangat usang.",
+        #         "fakultas": "-",
+        #         "jurusan": "-",
+        #         "lokasi": "Food Court Danau Unesa Ketintang",
+        #         "gambar": "-",
+        #         "status": "-",
+        #     },
+        #     {
+        #         "_id": 3,
+        #         "judul": "Tempat duduk tidak nyaman di food court danau unesa",
+        #         "deskripsi": "tempat duduk di food court danau unesa tidak nyaman.",
+        #         "fakultas": "-",
+        #         "jurusan": "-",
+        #         "lokasi": "Food Court Danau Unesa Ketintang",
+        #         "gambar": "-",
+        #         "status": "-",
+        #     },
+        #     {
+        #         "_id": 4,
+        #         "judul": "Kursi food court perlu diperbaiki",
+        #         "deskripsi": "Kursi di food court perlu diperbaiki.",
+        #         "fakultas": "-",
+        #         "jurusan": "-",
+        #         "lokasi": "Food Court Danau Unesa Ketintang",
+        #         "gambar": "-",
+        #         "status": "-",
+        #     },
+        #     {
+        #         "_id": 5,
+        #         "judul": "tempat sampah penuh",
+        #         "deskripsi": "Saya menemukan tempat sampah yang penuh di food court.",
+        #         "fakultas": "-",
+        #         "jurusan": "-",
+        #         "lokasi": "Food Court Danau Unesa Ketintang",
+        #         "gambar": "-",
+        #         "status": "-",
+        #     },
+        #     {
+        #         "_id": 6,
+        #         "judul": "Banyak sampah di sekitar danau unesa",
+        #         "deskripsi": "Saya menemukan banyak sampah di sekitar danau unesa.",
+        #         "fakultas": "-",
+        #         "jurusan": "-",
+        #         "lokasi": "Food Court Danau Unesa Ketintang",
+        #         "gambar": "-",
+        #         "status": "-",
+        #     },
+        #     {
+        #         "_id": 7,
+        #         "judul": "tempat sampah di food court",
+        #         "deskripsi": "Tempat sampah di food court danau unesa penuh.",
+        #         "fakultas": "-",
+        #         "jurusan": "-",
+        #         "lokasi": "Food Court Danau Unesa Ketintang",
+        #         "gambar": "-",
+        #         "status": "-",
+        #     },
+        # ]
+
         clusters = perform_clustering_dev(laporans, jumlah_cluster)
         # print(clusters)
 
@@ -128,7 +201,7 @@ async def cluster_laporan(jumlah_cluster: int = 5):
 @router.get("/ner")
 async def ner_laporan(jumlah_cluster: int = 5):
     try:
-        laporans = laporan_collection.find({})
+        laporans = laporan_collection.find({"status": {"$nin": ["selesai", "ditolak"]}})
         laporans = list(laporans)
 
         # # Mengambil data laporan yang memiliki gambar
@@ -154,7 +227,7 @@ async def ner_laporan(jumlah_cluster: int = 5):
 
 
 @router.get("/shilouette-score")
-async def get_shilouette_score():
+async def get_shilouette_score(jumlah_cluster: int = 10):
     try:
         laporans = laporan_collection.find({})
         laporans = list(laporans)
@@ -166,7 +239,7 @@ async def get_shilouette_score():
         # image_urls = [lap["gambar"] for lap in laporans_with_image]
 
         # # Melakukan clustering
-        clusters = find_optimal_num_clusters_silhouette(laporans)
+        clusters = find_optimal_num_clusters_silhouette(laporans, jumlah_cluster)
         # print(clusters)
 
         # Menggabungkan hasil clustering dengan data laporan
@@ -209,7 +282,9 @@ async def get_shilouette_chart():
 @router.post("/summarize-text")
 async def get_summary(text: Text):
     try:
-        sum_text = summarize_text_online(str(text))
+        # get text.text
+        text = text.text
+        sum_text = summarize_text_online(text)
 
         return {
             "message": "Summarize text berhasil didapatkan",
@@ -284,8 +359,22 @@ async def edit_many_laporan(ids: list[str], new_status: str):
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
-@router.put("/{id}")
-async def edit_laporan(id, laporan: Laporan):
+@router.put("/status/{id}")
+async def edit_status(id, new_status):
+    try:
+        laporan_collection.find_one_and_update(
+            {"_id": ObjectId(id)},
+            {"$set": {"status": new_status}},
+        )
+
+        return {
+            "message": "Status berhasil diubah",
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+    # @router.put("/{id}")
+    # async def edit_laporan(id, laporan: Laporan):
     try:
         laporan.user_id = ObjectId(laporan.user_id)
         if laporan.gambar:
@@ -307,5 +396,21 @@ async def edit_laporan(id, laporan: Laporan):
             }
         else:
             raise HTTPException(status_code=500, detail="Gagal mengubah laporan")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+@router.post("/rating/{id}")
+async def post_rating(id: str, rating: int):
+    try:
+        updated_laporan = laporan_collection.find_one_and_update(
+            {"_id": ObjectId(id)}, {"$set": {"rating": rating}}
+        )
+        if updated_laporan:
+            return {
+                "message": "Rating berhasil ditambahkan",
+            }
+        else:
+            raise HTTPException(status_code=500, detail="Gagal menambahkan rating")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")

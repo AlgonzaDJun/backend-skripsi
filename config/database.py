@@ -1,11 +1,14 @@
 from pymongo import MongoClient
+import os
+from dotenv import load_dotenv
 
-client = MongoClient(
-    "mongodb+srv://arjun:arjun@cluster0.j0ywwgr.mongodb.net/?retryWrites=true&w=majority"
-)
+load_dotenv()
+
+client = MongoClient(os.getenv("DB_URI"))
 
 db = client.skripsi_be
 
 todo_collection = db["tes"]
 user_collection = db["users"]
 laporan_collection = db["laporans"]
+chat_collection = db["chats"]
